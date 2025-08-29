@@ -549,6 +549,7 @@ do
 
 			-- // Instances
 			local ScreenGui = Instance.new('ScreenGui', game:GetService("RunService"):IsStudio() and game.Players.LocalPlayer.PlayerGui or game.CoreGui)
+			ScreenGui.Name = "Crimson"
 			local Main = Instance.new('Frame', ScreenGui)
 			local Inline = Instance.new('Frame', Main)
 			local Middle = Instance.new('Frame', Inline)
