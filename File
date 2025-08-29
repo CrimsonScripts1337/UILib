@@ -8,7 +8,7 @@ do
 			main = "test";
 			configs = "test/Configs";
 		};
-		Accent = Color3.fromRGB(76, 162, 252);
+		Accent = Color3.fromRGB(148, 0, 0);
 		Pages = {};
 		Sections = {};
 		Flags = {};
