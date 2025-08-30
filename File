@@ -1,5 +1,6 @@
 -- Made by portal
 -- ReaperHacks here, I don't claim any credit for this UI Library :)
+-- This version is also slightly modified by me feel free to use :)
 local Library = {};
 do
 	Library = {
@@ -8,7 +9,7 @@ do
 			main = "test";
 			configs = "test/Configs";
 		};
-		Accent = Color3.fromRGB(76, 162, 252);
+		Accent = Color3.fromRGB(148, 0, 0);
 		Pages = {};
 		Sections = {};
 		Flags = {};
