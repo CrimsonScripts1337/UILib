@@ -1,13 +1,12 @@
 -- Made by portal
 -- ReaperHacks here, I don't claim any credit for this UI Library :)
--- This version is also slightly modified by me feel free to use :)
 local Library = {};
 do
 	Library = {
 		Open = true;
 		Folders = {
-			main = "test";
-			configs = "test/Configs";
+			main = "Crimson";
+			configs = "Crimson/Configs";
 		};
 		Accent = Color3.fromRGB(148, 0, 0);
 		Pages = {};
@@ -550,6 +549,7 @@ do
 
 			-- // Instances
 			local ScreenGui = Instance.new('ScreenGui', game:GetService("RunService"):IsStudio() and game.Players.LocalPlayer.PlayerGui or game.CoreGui)
+			ScreenGui.Name = "Crimson"
 			local Main = Instance.new('Frame', ScreenGui)
 			local Inline = Instance.new('Frame', Main)
 			local Middle = Instance.new('Frame', Inline)
@@ -2818,78 +2818,6 @@ do
 			return Button
 		end
 		--
-		function Sections:Label(Options)
-			local Properties = Options or {}
-
-			local Label = {
-				Window   = self.Window,
-				Page     = self.Page,
-				Section  = self,
-				Text     = Properties.Text or Properties.Title or Properties.Name or "label",
-				Color    = Properties.Color or Color3.fromRGB(78, 78, 78),
-				RichText = (Properties.RichText == true),
-				Align    = Properties.Alignment or Properties.Align or Enum.TextXAlignment.Left,
-				Height   = Properties.Height or Properties.Size or 15, -- row height
-			}
-
-			-- Parent to the chosen side
-			local Holder = Instance.new("Frame", (Options.Side == "Right" and Label.Section.Elements.Right or Label.Section.Elements.Left))
-			local Text   = Instance.new("TextLabel", Holder)
-
-			-- participate in Library:SetOpen() fade
-			table.insert(Library.Instances, Holder)
-
-			-- Holder
-			Holder.Name = "LabelHolder"
-			Holder.Size = UDim2.new(1, 0, 0, Label.Height)
-			Holder.BackgroundColor3 = Color3.new(1,1,1)
-			Holder.BackgroundTransparency = 1
-			Holder.BorderSizePixel = 0
-
-			-- Text
-			Text.Name = "Label"
-			Text.Position = UDim2.new(0, 15, 0, 0)   -- aligns with other rows
-			Text.Size = UDim2.new(1, -15, 1, 0)
-			Text.BackgroundTransparency = 1
-			Text.Text = Label.Text
-			Text.TextColor3 = Label.Color
-			Text.FontFace = Library.UIFont
-			Text.TextSize = Library.FontSize
-			Text.TextXAlignment = Label.Align
-			Text.RichText = Label.RichText
-			Text.TextWrapped = false
-			Text.TextTruncate = Enum.TextTruncate.AtEnd
-
-			-- Methods
-			function Label:Set(newText)
-				self.Text = tostring(newText or "")
-				Text.Text = self.Text
-			end
-			function Label:SetText(newText) -- alias
-				Label:Set(newText)
-			end
-			function Label:SetColor(color)
-				self.Color = color
-				Text.TextColor3 = color
-			end
-			function Label:SetAlignment(align)
-				self.Align = align
-				Text.TextXAlignment = align
-			end
-			function Label:SetRichText(on)
-				self.RichText = (on and true or false)
-				Text.RichText = self.RichText
-			end
-			function Label:SetVisible(on)
-				Holder.Visible = (on ~= false)
-			end
-			function Label:Destroy()
-				Holder:Destroy()
-			end
-
-			return Label
-		end
-
 		function Sections:Colorpicker(Options)
 			local Properties = Options or {}
 			local Colorpicker = {
