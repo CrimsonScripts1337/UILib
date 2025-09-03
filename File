@@ -1497,6 +1497,11 @@ do
 				end)
 				--
 				Library:Connection(game:GetService("UserInputService").InputBegan, function(inp)
+					local UIS = game:GetService("UserInputService")
+					if UIS:GetFocusedTextBox() and inp.UserInputType == Enum.UserInputType.Keyboard then
+						return
+					end
+
 					if (inp.KeyCode == Key or inp.UserInputType == Key) and not Keybind.Binding then
 						if Keybind.Mode == "Hold" then
 							if Keybind.Flag then
@@ -1518,6 +1523,11 @@ do
 				end)
 				--
 				Library:Connection(game:GetService("UserInputService").InputEnded, function(inp)
+					local UIS = game:GetService("UserInputService")
+					if UIS:GetFocusedTextBox() and inp.UserInputType == Enum.UserInputType.Keyboard then
+						return
+					end
+
 					if Keybind.Mode == "Hold" then
 						if Key ~= "" or Key ~= nil then
 							if inp.KeyCode == Key or inp.UserInputType == Key then
@@ -2629,6 +2639,11 @@ do
 			end)
 			--
 			Library:Connection(game:GetService("UserInputService").InputBegan, function(inp)
+				local UIS = game:GetService("UserInputService")
+				if UIS:GetFocusedTextBox() and inp.UserInputType == Enum.UserInputType.Keyboard then
+					return
+				end
+
 				if (inp.KeyCode == Key or inp.UserInputType == Key) and not Keybind.Binding then
 					if Keybind.Mode == "Hold" then
 						if Keybind.Flag then
@@ -2650,6 +2665,11 @@ do
 			end)
 			--
 			Library:Connection(game:GetService("UserInputService").InputEnded, function(inp)
+				local UIS = game:GetService("UserInputService")
+				if UIS:GetFocusedTextBox() and inp.UserInputType == Enum.UserInputType.Keyboard then
+					return
+				end
+
 				if Keybind.Mode == "Hold" then
 					if Key ~= "" or Key ~= nil then
 						if inp.KeyCode == Key or inp.UserInputType == Key then
@@ -2794,8 +2814,10 @@ do
 
 			-- // Connections
 			TextBox.FocusLost:Connect(function()
-				Textbox.Callback(TextBox.Text)
-				Library.Flags[Textbox.Flag] = TextBox.Text
+				local submitted = TextBox.Text
+				Textbox.Callback(submitted)
+				Library.Flags[Textbox.Flag] = submitted
+				TextBox.Text = ""
 			end)
 			--
 			local function set(str)
