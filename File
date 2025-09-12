@@ -1,5 +1,6 @@
 -- Made by portal
 -- ReaperHacks here, I don't claim any credit for this UI Library :)
+print("LOADEDDDDD")
 local Library = {};
 do
 	Library = {
@@ -141,112 +142,154 @@ do
 		end;
 		--
 		function Library:GetConfig()
-			local Config = ""
-			for Index, Value in pairs(self.Flags) do
-				if
-					Index ~= "ConfigConfig_List"
-					and Index ~= "ConfigConfig_Load"
-					and Index ~= "ConfigConfig_Save"
-				then
-					local Value2 = Value
-					local Final = ""
-					--
-					if typeof(Value2) == "Color3" then
-						local hue, sat, val = Value2:ToHSV()
-						--
-						Final = ("rgb(%s,%s,%s,%s)"):format(hue, sat, val, 1)
-					elseif typeof(Value2) == "table" and Value2.Color and Value2.Transparency then
-						local hue, sat, val = Value2.Color:ToHSV()
-						--
-						Final = ("rgb(%s,%s,%s,%s)"):format(hue, sat, val, Value2.Transparency)
-					elseif typeof(Value2) == "table" and Value.Mode then
-						local Values = Value.current
-						--
-						Final = ("key(%s,%s,%s)"):format(Values[1] or "nil", Values[2] or "nil", Value.Mode)
-					elseif Value2 ~= nil then
-						if typeof(Value2) == "boolean" then
-							Value2 = ("bool(%s)"):format(tostring(Value2))
-						elseif typeof(Value2) == "table" then
-							local New = "table("
-							--
-							for Index2, Value3 in pairs(Value2) do
-								New = New .. Value3 .. ","
+			local lines = {}
+			for k, v in pairs(self.Flags) do
+				if k ~= "ConfigConfig_List" and k ~= "ConfigConfig_Load" and k ~= "ConfigConfig_Save" then
+					local encoded
+
+					local t = typeof(v)
+					if t == "Color3" then
+						local h, s, l = v:ToHSV()
+						encoded = ("rgb(%s,%s,%s,%s)"):format(h, s, l, 1)
+
+					elseif t == "table" and v.Color and v.Transparency and typeof(v.Color) == "Color3" then
+						local h, s, l = v.Color:ToHSV()
+						encoded = ("rgb(%s,%s,%s,%s)"):format(h, s, l, tonumber(v.Transparency) or 1)
+
+					elseif t == "boolean" then
+						encoded = ("bool(%s)"):format(v and "true" or "false")
+
+					elseif t == "number" then
+						encoded = ("number(%s)"):format(tostring(v))
+
+					elseif t == "string" then
+						-- prevent newlines/parens from breaking the format
+						local safe = tostring(v):gsub("[\r\n]", " "):gsub("%)", "]")
+						encoded = ("string(%s)"):format(safe)
+
+					elseif t == "table" then
+						-- basic list/table serialization of primitives
+						local buf = {}
+						for _, item in pairs(v) do
+							local it = typeof(item)
+							if it == "string" or it == "number" or it == "boolean" then
+								table.insert(buf, tostring(item))
 							end
-							--
-							if New:sub(#New) == "," then
-								New = New:sub(0, #New - 1)
-							end
-							--
-							Value2 = New .. ")"
-						elseif typeof(Value2) == "string" then
-							Value2 = ("string(%s)"):format(Value2)
-						elseif typeof(Value2) == "number" then
-							Value2 = ("number(%s)"):format(Value2)
 						end
-						--
-						Final = Value2
+						encoded = ("table(%s)"):format(table.concat(buf, ","))
+
+					else
+						-- unsupported types (functions/instances, etc.) -> skip
+						encoded = nil
 					end
-					--
-					Config = Config .. Index .. ": " .. tostring(Final) .. "\n"
+
+					if encoded ~= nil then
+						table.insert(lines, string.format("%s: %s", tostring(k), encoded))
+					end
 				end
 			end
-			--
-			return Config
+			return table.concat(lines, "\n")
 		end
 		--
-		function Library:LoadConfig(Config)
-			local Table = string.split(Config, "\n")
-			local Table2 = {}
-			for Index, Value in pairs(Table) do
-				local Table3 = string.split(Value, ":")
-				--
-				if Table3[1] ~= "ConfigConfig_List" and #Table3 >= 2 then
-					local Value = Table3[2]:sub(2, #Table3[2])
-					--
-					if Value:sub(1, 3) == "rgb" then
-						local Table4 = string.split(Value:sub(5, #Value - 1), ",")
-						--
-						Value = Table4
-					elseif Value:sub(1, 3) == "key" then
-						local Table4 = string.split(Value:sub(5, #Value - 1), ",")
-						--
-						if Table4[1] == "nil" and Table4[2] == "nil" then
-							Table4[1] = nil
-							Table4[2] = nil
+		function Library:LoadConfig(configString)
+			if typeof(configString) ~= "string" then return false, { "Config data not a string." } end
+
+			local parsed = {}
+			for line in string.gmatch(configString, "[^\r\n]+") do
+				-- trim leading/trailing spaces
+				line = line:match("^%s*(.-)%s*$")
+				-- skip empty/commentish lines
+				if line ~= "" and line:find(":") then
+					local key, raw = line:match("^%s*([^:]+)%s*:%s*(.+)$")
+					if key and raw then
+						local val
+
+						local function splitCSV(body)
+							local out = {}
+							for part in body:gmatch("[^,]+") do
+								table.insert(out, part)
+							end
+							return out
 						end
-						--
-						Value = Table4
-					elseif Value:sub(1, 4) == "bool" then
-						local Bool = Value:sub(6, #Value - 1)
-						--
-						Value = Bool == "true"
-					elseif Value:sub(1, 5) == "table" then
-						local Table4 = string.split(Value:sub(7, #Value - 1), ",")
-						--
-						Value = Table4
-					elseif Value:sub(1, 6) == "string" then
-						local String = Value:sub(8, #Value - 1)
-						--
-						Value = String
-					elseif Value:sub(1, 6) == "number" then
-						local Number = tonumber(Value:sub(8, #Value - 1))
-						--
-						Value = Number
+
+						-- normalize token
+						raw = raw:match("^%s*(.-)%s*$")
+
+						if raw:sub(1, 3) == "rgb" then
+							-- rgb(h,s,v,a)
+							local body = raw:match("^rgb%((.*)%)$")
+							if body then
+								local parts = splitCSV(body)
+								if #parts >= 3 then
+									-- keep same structure your setters expect: {h,s,v,a}
+									val = { tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3]), tonumber(parts[4]) or 1 }
+								end
+							end
+
+						elseif raw:sub(1, 3) == "key" then
+							-- key(k1,k2,Mode) -> keep as a simple table to hand to setter
+							local body = raw:match("^key%((.*)%)$")
+							if body then
+								local parts = splitCSV(body)
+								-- convert "nil" back to nil
+								for i = 1, #parts do
+									parts[i] = (parts[i] == "nil") and nil or parts[i]
+								end
+								val = parts
+							end
+
+						elseif raw:sub(1, 4) == "bool" then
+							local b = raw:match("^bool%((.*)%)$")
+							val = (b == "true")
+
+						elseif raw:sub(1, 5) == "table" then
+							local body = raw:match("^table%((.*)%)$")
+							local parts = body and splitCSV(body) or {}
+							val = parts
+
+						elseif raw:sub(1, 6) == "string" then
+							local s = raw:match("^string%((.*)%)$")
+							if s ~= nil then
+								-- revert the ')' escaping we did on save
+								val = tostring(s):gsub("%]", ")")
+							end
+
+						elseif raw:sub(1, 6) == "number" then
+							local n = raw:match("^number%((.*)%)$")
+							val = tonumber(n)
+
+						else
+							-- unknown token: ignore
+							val = nil
+						end
+
+						if key ~= "ConfigConfig_List" and val ~= nil then
+							parsed[key] = val
+						end
 					end
-					--
-					Table2[Table3[1]] = Value
 				end
 			end
-			--
-			for i, v in pairs(Table2) do
-				if Flags[i] then
-					if typeof(Flags[i]) == "table" then
-						Flags[i]:Set(v)
+
+			-- Apply with individual protection; collect errors instead of exploding.
+			local errors = {}
+			for k, v in pairs(parsed) do
+				local setter = Flags[k]
+				if setter then
+					local ok, err
+					if typeof(setter) == "table" and setter.Set then
+						ok, err = pcall(function() setter:Set(v) end)
+					elseif typeof(setter) == "function" then
+						ok, err = pcall(setter, v)
 					else
-						Flags[i](v)
+						ok = true -- unknown setter shape; skip
+					end
+					if not ok and err then
+						table.insert(errors, string.format("Flag '%s' failed to apply: %s", tostring(k), tostring(err)))
 					end
 				end
 			end
+
+			return #errors == 0, errors
 		end
 		--
 		function Library:SetOpen(bool)
