@@ -1,6 +1,6 @@
 -- Made by portal
 -- ReaperHacks here, I don't claim any credit for this UI Library :)
-print("1337123")
+print("33")
 local Library = {};
 do
 	Library = {
@@ -305,9 +305,11 @@ do
 			pass()
 			local tries = 0
 			while next(pending) ~= nil and tries < max_tries do
-				task.wait(interval)
-				tries += 1
-				pass()
+				task.spawn(function()
+					task.wait(interval)
+					tries += 1
+					pass()
+				end)
 			end
 
 			local missing = {}; for k in pairs(pending) do table.insert(missing, k) end
