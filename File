@@ -1,6 +1,6 @@
 -- Made by portal
 -- ReaperHacks here, I don't claim any credit for this UI Library :)
-print("123123123123123323213")
+print("1337")
 local Library = {};
 do
 	Library = {
@@ -193,14 +193,14 @@ do
 		--
 		function Library:LoadConfig(Config, opts)
 			opts = opts or {}
-			local max_time   = tonumber(opts.max_time)   or 2.0   -- seconds total to keep retrying
-			local interval   = tonumber(opts.interval)   or 0.05  -- retry every 0.05s
-			local max_tries  = math.max(1, math.floor(max_time / interval))
+			local max_time  = tonumber(opts.max_time)  or 2.0
+			local interval  = tonumber(opts.interval)  or 0.05
+			local max_tries = math.max(1, math.floor(max_time / interval))
 
-			-- --- Parse (same format as original) ---
+			-- ---- Parse (compatible with your on-disk format) ----
 			local lines  = string.split(tostring(Config or ""), "\n")
 			local parsed = {}
-			for _, line in pairs(lines) do
+			for _, line in ipairs(lines) do
 				local pair = string.split(line, ":")
 				if pair[1] and pair[1] ~= "ConfigConfig_List" and #pair >= 2 then
 					local value = pair[2]:sub(2, #pair[2])
@@ -223,14 +223,15 @@ do
 				end
 			end
 
-			-- --- Apply with retries for flags that don't exist yet ---
+			-- ---- Apply with retries for late-created controls ----
 			local applied, failed, pending = 0, 0, {}
 			for k, v in pairs(parsed) do pending[k] = v end
 
 			local function try_apply_once()
 				local still_missing = {}
+				local flags = (self and self.Flags) or Flags  -- Flags fallback only if your lib also exposes the upvalue
 				for k, v in pairs(pending) do
-					local setter = Flags[k]  -- NOTE: library stores setter functions in local Flags
+					local setter = flags and flags[k] or nil
 					if setter then
 						local ok, err
 						if typeof(setter) == "table" and setter.Set then
@@ -245,16 +246,16 @@ do
 							warn(("[Crimson Config] Setter failed for '%s': %s"):format(tostring(k), tostring(err)))
 						end
 					else
-						still_missing[k] = v -- not created yet; retry later
+						still_missing[k] = v
 					end
 				end
 				pending = still_missing
 			end
 
-			-- First pass immediately
+			-- First pass
 			try_apply_once()
 
-			-- Retry later for late-registered controls
+			-- Retry if some controls aren't registered yet
 			local tries = 0
 			while next(pending) ~= nil and tries < max_tries do
 				task.wait(interval)
@@ -262,16 +263,11 @@ do
 				try_apply_once()
 			end
 
-			local never_applied_keys = {}
-			for k in pairs(pending) do table.insert(never_applied_keys, k) end
+			local missing = {}
+			for k in pairs(pending) do table.insert(missing, k) end
 
 			local ok = (next(pending) == nil and failed == 0)
-			return ok, {
-				applied = applied,
-				failed = failed,
-				missing = never_applied_keys,   -- flags that never existed during the retry window
-				tries = tries
-			}
+			return ok, { applied = applied, failed = failed, missing = missing, tries = tries }
 		end
 		--
 		function Library:SetOpen(bool)
