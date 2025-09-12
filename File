@@ -1,6 +1,6 @@
 -- Made by portal
 -- ReaperHacks here, I don't claim any credit for this UI Library :)
-print("LOADEDDDDD")
+print("123123123123123323213")
 local Library = {};
 do
 	Library = {
@@ -191,105 +191,87 @@ do
 			return table.concat(lines, "\n")
 		end
 		--
-		function Library:LoadConfig(configString)
-			if typeof(configString) ~= "string" then return false, { "Config data not a string." } end
+		function Library:LoadConfig(Config, opts)
+			opts = opts or {}
+			local max_time   = tonumber(opts.max_time)   or 2.0   -- seconds total to keep retrying
+			local interval   = tonumber(opts.interval)   or 0.05  -- retry every 0.05s
+			local max_tries  = math.max(1, math.floor(max_time / interval))
 
+			-- --- Parse (same format as original) ---
+			local lines  = string.split(tostring(Config or ""), "\n")
 			local parsed = {}
-			for line in string.gmatch(configString, "[^\r\n]+") do
-				-- trim leading/trailing spaces
-				line = line:match("^%s*(.-)%s*$")
-				-- skip empty/commentish lines
-				if line ~= "" and line:find(":") then
-					local key, raw = line:match("^%s*([^:]+)%s*:%s*(.+)$")
-					if key and raw then
-						local val
+			for _, line in pairs(lines) do
+				local pair = string.split(line, ":")
+				if pair[1] and pair[1] ~= "ConfigConfig_List" and #pair >= 2 then
+					local value = pair[2]:sub(2, #pair[2])
+					if value:sub(1,3) == "rgb" then
+						value = string.split(value:sub(5, #value - 1), ",")
+					elseif value:sub(1,3) == "key" then
+						local t = string.split(value:sub(5, #value - 1), ",")
+						if t[1] == "nil" and t[2] == "nil" then t[1], t[2] = nil, nil end
+						value = t
+					elseif value:sub(1,4) == "bool" then
+						value = (value:sub(6, #value - 1) == "true")
+					elseif value:sub(1,5) == "table" then
+						value = string.split(value:sub(7, #value - 1), ",")
+					elseif value:sub(1,6) == "string" then
+						value = value:sub(8, #value - 1)
+					elseif value:sub(1,6) == "number" then
+						value = tonumber(value:sub(8, #value - 1))
+					end
+					parsed[pair[1]] = value
+				end
+			end
 
-						local function splitCSV(body)
-							local out = {}
-							for part in body:gmatch("[^,]+") do
-								table.insert(out, part)
-							end
-							return out
-						end
+			-- --- Apply with retries for flags that don't exist yet ---
+			local applied, failed, pending = 0, 0, {}
+			for k, v in pairs(parsed) do pending[k] = v end
 
-						-- normalize token
-						raw = raw:match("^%s*(.-)%s*$")
-
-						if raw:sub(1, 3) == "rgb" then
-							-- rgb(h,s,v,a)
-							local body = raw:match("^rgb%((.*)%)$")
-							if body then
-								local parts = splitCSV(body)
-								if #parts >= 3 then
-									-- keep same structure your setters expect: {h,s,v,a}
-									val = { tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3]), tonumber(parts[4]) or 1 }
-								end
-							end
-
-						elseif raw:sub(1, 3) == "key" then
-							-- key(k1,k2,Mode) -> keep as a simple table to hand to setter
-							local body = raw:match("^key%((.*)%)$")
-							if body then
-								local parts = splitCSV(body)
-								-- convert "nil" back to nil
-								for i = 1, #parts do
-									parts[i] = (parts[i] == "nil") and nil or parts[i]
-								end
-								val = parts
-							end
-
-						elseif raw:sub(1, 4) == "bool" then
-							local b = raw:match("^bool%((.*)%)$")
-							val = (b == "true")
-
-						elseif raw:sub(1, 5) == "table" then
-							local body = raw:match("^table%((.*)%)$")
-							local parts = body and splitCSV(body) or {}
-							val = parts
-
-						elseif raw:sub(1, 6) == "string" then
-							local s = raw:match("^string%((.*)%)$")
-							if s ~= nil then
-								-- revert the ')' escaping we did on save
-								val = tostring(s):gsub("%]", ")")
-							end
-
-						elseif raw:sub(1, 6) == "number" then
-							local n = raw:match("^number%((.*)%)$")
-							val = tonumber(n)
-
+			local function try_apply_once()
+				local still_missing = {}
+				for k, v in pairs(pending) do
+					local setter = Flags[k]  -- NOTE: library stores setter functions in local Flags
+					if setter then
+						local ok, err
+						if typeof(setter) == "table" and setter.Set then
+							ok, err = pcall(function() setter:Set(v) end)
 						else
-							-- unknown token: ignore
-							val = nil
+							ok, err = pcall(function() setter(v) end)
 						end
-
-						if key ~= "ConfigConfig_List" and val ~= nil then
-							parsed[key] = val
+						if ok then
+							applied += 1
+						else
+							failed  += 1
+							warn(("[Crimson Config] Setter failed for '%s': %s"):format(tostring(k), tostring(err)))
 						end
-					end
-				end
-			end
-
-			-- Apply with individual protection; collect errors instead of exploding.
-			local errors = {}
-			for k, v in pairs(parsed) do
-				local setter = Flags[k]
-				if setter then
-					local ok, err
-					if typeof(setter) == "table" and setter.Set then
-						ok, err = pcall(function() setter:Set(v) end)
-					elseif typeof(setter) == "function" then
-						ok, err = pcall(setter, v)
 					else
-						ok = true -- unknown setter shape; skip
-					end
-					if not ok and err then
-						table.insert(errors, string.format("Flag '%s' failed to apply: %s", tostring(k), tostring(err)))
+						still_missing[k] = v -- not created yet; retry later
 					end
 				end
+				pending = still_missing
 			end
 
-			return #errors == 0, errors
+			-- First pass immediately
+			try_apply_once()
+
+			-- Retry later for late-registered controls
+			local tries = 0
+			while next(pending) ~= nil and tries < max_tries do
+				task.wait(interval)
+				tries += 1
+				try_apply_once()
+			end
+
+			local never_applied_keys = {}
+			for k in pairs(pending) do table.insert(never_applied_keys, k) end
+
+			local ok = (next(pending) == nil and failed == 0)
+			return ok, {
+				applied = applied,
+				failed = failed,
+				missing = never_applied_keys,   -- flags that never existed during the retry window
+				tries = tries
+			}
 		end
 		--
 		function Library:SetOpen(bool)
