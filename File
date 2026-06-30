@@ -250,6 +250,15 @@ do
 		end
 		--
 		function Library:SetOpen(bool)
+            for _, v in next, Library.Instances do
+                if v.Name == "Accent" then
+                    print(
+                        v:GetFullName(),
+                        "Visible:", v.Visible,
+                        "BGT:", v.BackgroundTransparency
+                    )
+                end
+            end
             if typeof(bool) ~= "boolean" then
                 return
             end
