@@ -250,52 +250,198 @@ do
 		end
 		--
 		function Library:SetOpen(bool)
-			if typeof(bool) == 'boolean' then
-				Library.Open = bool;
+            if typeof(bool) == "boolean" then
+                Library.Open = bool
 
-				if bool then
-					Library.Holder.Visible = true
-				end
+                if bool then
+                    Library.Holder.Visible = true
+                end
 
-				for _,v in next, Library.Instances do
-					if v:IsA("Frame") or v:IsA("TextButton") then
-						if v.BackgroundTransparency ~= 1 then
-							task.spawn(function()
-								local t = game:GetService("TweenService"):Create(v, TweenInfo.new(0.25, Enum.EasingStyle.Linear, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {BackgroundTransparency = bool and 0 or 0.95})
-								t.Completed:Connect(function()
-									if bool == false then
-										Library.Holder.Visible = false
-									end
-								end)
-								t:Play()
-							end)
-						end
-					elseif v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
-						if v.TextTransparency ~= 1 and v.BackgroundTransparency == 1 then
-							task.spawn(function()
-								game:GetService("TweenService"):Create(v, TweenInfo.new(0.25, Enum.EasingStyle.Linear, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {TextTransparency = bool and 0 or 0.95}):Play()
-							end)
-						end
-					elseif v:IsA("UIStroke") then
-						task.spawn(function()
-							game:GetService("TweenService"):Create(v, TweenInfo.new(0.25, Enum.EasingStyle.Linear, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {Transparency = bool and 0 or 0.95}):Play()
-						end)
-					elseif v:IsA("ImageButton") then
-						task.spawn(function()
-							game:GetService("TweenService"):Create(v, TweenInfo.new(0.25, Enum.EasingStyle.Linear, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {ImageTransparency = bool and 0 or 0.95, BackgroundTransparency = bool and 0 or 0.95}):Play()
-						end)
-					end
-				end
-				task.spawn(function()
-					game:GetService("TweenService"):Create(Library.PageHolder, TweenInfo.new(0.25, Enum.EasingStyle.Quad, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {Position = bool and UDim2.new(0,60,0,0) or UDim2.new(0,0,0,0)}):Play()
-					--
-					if bool then
-						task.wait(0.05)
-					end
-					game:GetService("TweenService"):Create(Library.Gradient, TweenInfo.new(0.25, Enum.EasingStyle.Quad, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {Position = bool and UDim2.new(0.5,0,0,2) or UDim2.new(1,0,0,2)}):Play()
-					game:GetService("TweenService"):Create(Library.Gradient, TweenInfo.new(0.25, Enum.EasingStyle.Quad, bool and Enum.EasingDirection.Out or Enum.EasingDirection.In), {Size = bool and UDim2.new(0.5,0,0,1) or UDim2.new(0,0,0,1)}):Play()
-				end)
-			end
+                for _, v in next, Library.Instances do
+                    if v:IsA("Frame") then
+                        if v.BackgroundTransparency ~= 1 then
+                            task.spawn(function()
+                                if v:GetAttribute("OriginalBGTransparency") == nil then
+                                    v:SetAttribute("OriginalBGTransparency", v.BackgroundTransparency)
+                                end
+
+                                local t = game:GetService("TweenService"):Create(
+                                    v,
+                                    TweenInfo.new(
+                                        0.25,
+                                        Enum.EasingStyle.Linear,
+                                        bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                                    ),
+                                    {
+                                        BackgroundTransparency = bool
+                                            and (v:GetAttribute("OriginalBGTransparency") or 0)
+                                            or 0.95
+                                    }
+                                )
+
+                                t.Completed:Connect(function()
+                                    if not bool then
+                                        Library.Holder.Visible = false
+                                    end
+                                end)
+
+                                t:Play()
+                            end)
+                        end
+
+                    elseif v:IsA("TextButton") then
+                        task.spawn(function()
+                            if v:GetAttribute("OriginalBGTransparency") == nil then
+                                v:SetAttribute("OriginalBGTransparency", v.BackgroundTransparency)
+                            end
+
+                            if v:GetAttribute("OriginalTextTransparency") == nil then
+                                v:SetAttribute("OriginalTextTransparency", v.TextTransparency)
+                            end
+
+                            game:GetService("TweenService"):Create(
+                                v,
+                                TweenInfo.new(
+                                    0.25,
+                                    Enum.EasingStyle.Linear,
+                                    bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                                ),
+                                {
+                                    BackgroundTransparency = bool
+                                        and (v:GetAttribute("OriginalBGTransparency") or 0)
+                                        or 0.95,
+
+                                    TextTransparency = bool
+                                        and (v:GetAttribute("OriginalTextTransparency") or 0)
+                                        or 0.95
+                                }
+                            ):Play()
+                        end)
+
+                    elseif v:IsA("TextLabel") or v:IsA("TextBox") then
+                        if v.TextTransparency ~= 1 and v.BackgroundTransparency == 1 then
+                            task.spawn(function()
+                                if v:GetAttribute("OriginalTextTransparency") == nil then
+                                    v:SetAttribute("OriginalTextTransparency", v.TextTransparency)
+                                end
+
+                                game:GetService("TweenService"):Create(
+                                    v,
+                                    TweenInfo.new(
+                                        0.25,
+                                        Enum.EasingStyle.Linear,
+                                        bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                                    ),
+                                    {
+                                        TextTransparency = bool
+                                            and (v:GetAttribute("OriginalTextTransparency") or 0)
+                                            or 0.95
+                                    }
+                                ):Play()
+                            end)
+                        end
+
+                    elseif v:IsA("UIStroke") then
+                        task.spawn(function()
+                            if v:GetAttribute("OriginalStrokeTransparency") == nil then
+                                v:SetAttribute("OriginalStrokeTransparency", v.Transparency)
+                            end
+
+                            game:GetService("TweenService"):Create(
+                                v,
+                                TweenInfo.new(
+                                    0.25,
+                                    Enum.EasingStyle.Linear,
+                                    bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                                ),
+                                {
+                                    Transparency = bool
+                                        and (v:GetAttribute("OriginalStrokeTransparency") or 0)
+                                        or 0.95
+                                }
+                            ):Play()
+                        end)
+
+                    elseif v:IsA("ImageButton") then
+                        task.spawn(function()
+                            if v:GetAttribute("OriginalImageTransparency") == nil then
+                                v:SetAttribute("OriginalImageTransparency", v.ImageTransparency)
+                            end
+
+                            if v:GetAttribute("OriginalBGTransparency") == nil then
+                                v:SetAttribute("OriginalBGTransparency", v.BackgroundTransparency)
+                            end
+
+                            game:GetService("TweenService"):Create(
+                                v,
+                                TweenInfo.new(
+                                    0.25,
+                                    Enum.EasingStyle.Linear,
+                                    bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                                ),
+                                {
+                                    ImageTransparency = bool
+                                        and (v:GetAttribute("OriginalImageTransparency") or 0)
+                                        or 0.95,
+
+                                    BackgroundTransparency = bool
+                                        and (v:GetAttribute("OriginalBGTransparency") or 0)
+                                        or 0.95
+                                }
+                            ):Play()
+                        end)
+                    end
+                end
+
+                task.spawn(function()
+                    game:GetService("TweenService"):Create(
+                        Library.PageHolder,
+                        TweenInfo.new(
+                            0.25,
+                            Enum.EasingStyle.Quad,
+                            bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                        ),
+                        {
+                            Position = bool
+                                and UDim2.new(0, 60, 0, 0)
+                                or UDim2.new(0, 0, 0, 0)
+                        }
+                    ):Play()
+
+                    if bool then
+                        task.wait(0.05)
+                    end
+
+                    game:GetService("TweenService"):Create(
+                        Library.Gradient,
+                        TweenInfo.new(
+                            0.25,
+                            Enum.EasingStyle.Quad,
+                            bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                        ),
+                        {
+                            Position = bool
+                                and UDim2.new(0.5, 0, 0, 2)
+                                or UDim2.new(1, 0, 0, 2)
+                        }
+                    ):Play()
+
+                    game:GetService("TweenService"):Create(
+                        Library.Gradient,
+                        TweenInfo.new(
+                            0.25,
+                            Enum.EasingStyle.Quad,
+                            bool and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                        ),
+                        {
+                            Size = bool
+                                and UDim2.new(0.5, 0, 0, 1)
+                                or UDim2.new(0, 0, 0, 1)
+                        }
+                    ):Play()
+                end)
+            end
+        end
 		end;
 		--
 		function Library:ChangeAccent(Color)
